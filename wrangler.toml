@@ -1,5 +1,6 @@
 # EasyTier Cloudflare Relay — Durable Object 配置
-# 完整变量说明见《部署手册》
+# 由站点配置生成器生成 · 完整变量说明见《部署手册》
+# https://github.com/WWSTA/easytier-cf-relay
 
 name = "easytier-cf-relay"
 main = "src/index.js"
@@ -23,16 +24,12 @@ SERVER_VERSION_STR = "easytier-cf-relay/1.6.2"
 # 客户端优先直连 P2P，中继仅作兜底）；0 = 不宣告
 AVOID_RELAY_DATA = "1"
 # 是否继续转发 Data/KCP 数据包（P2P 失败时的兜底通道）：1 = 转发；0 = 丢弃（严格纯 P2P）
-RELAY_DATA = "1"
+RELAY_DATA = "0"
 # 同一房间最大 peer 数
 MAX_PEERS_PER_ROOM = "128"
 # 单 IP 并发连接上限（v1.4.1，事前限流）：防单 IP 用普通握手占满房间；
 # 仅 DO 升级层权威检查；同 NAT 多节点共享出口 IP，默认 6；0 = 关闭
 MAX_CONNS_PER_IP = "6"
-# 未知路径 tar pit（v1.4.1）：非升级请求访问未知路径时挂起不响应
-# （不返回 404，不泄露行为指纹，让扫描器空等）；EasyTier 客户端只走
-# WS 升级，不受影响；0 = 关闭（恢复 404）
-TARPIT_UNKNOWN = "1"
 # 单连接消息速率上限（v1.5，事前限流）：每连接每秒最大消息数，持续超限断开
 # （4008）；EasyTier 心跳 8s 1 个、路由同步爆发每秒数十个，默认 50 宽裕；0 = 关闭
 MSG_RATE_LIMIT_PER_SEC = "50"
@@ -41,21 +38,6 @@ MSG_RATE_LIMIT_PER_SEC = "50"
 MAX_PEERS_PER_GROUP = "32"
 # 单条 WS 消息最大字节数（EasyTier MTU 默认 1380，RPC 路由同步会更大）
 MAX_MESSAGE_BYTES = "131072"
-# 资源滥用防线（v1.6.0）：全部为处理途中同步检查，正常用户零开销；0 = 关闭该防线
-# 上限自洽不变量：MAX_ROUTES_PER_GROUP × MAX_ROUTE_INFO_BYTES 须 < MAX_MESSAGE_BYTES
-#（不自洽时启动日志 warn，合法全量推送可能被出站硬闸丢弃）
-MAX_SYNC_ITEMS = "256"
-# 单条 RoutePeerInfo 原始字节上限，超出丢弃该条（防巨型条目状态膨胀；官方典型条目 ~100-300B）
-MAX_ROUTE_INFO_BYTES = "768"
-# 每分组路由条目总数上限（transit/幽灵条目总量闸门，兼作出站全量推送体积上界）
-MAX_ROUTES_PER_GROUP = "128"
-# PeerCenter 单上报者直连表条目上限，超出截断
-MAX_DIRECT_PEERS_REPORT = "64"
-# 全量重推最小间隔（毫秒）：会话重置 / GetGlobalPeerMap 全量响应共用，每连接
-FULL_RESYNC_COOLDOWN_MS = "1000"
-# 握手网络名长度上限（空名 / 超长名拒绝，close 4002）
-MAX_NETWORK_NAME_BYTES = "128"
-
 # 未握手连接超时（毫秒）—— 幽灵连接清理
 HANDSHAKE_TIMEOUT_MS = "15000"
 # 空闲超时（毫秒）。必须大于客户端 ping 最大间隔 32s
@@ -77,8 +59,30 @@ ROUTE_INFO_TTL_MS = "3660000"
 # 空分组自动删除宽限（毫秒）：分组内在线节点归零后持续该时长仍为空 →
 # 整组删除（含路由条目与摘要注册）；0 = 关闭。默认 60000
 GROUP_AUTO_DELETE_MS = "60000"
-# 日志级别：debug | info | warn | error
-LOG_LEVEL = "info"
+# 资源滥用防线（v1.6.0）：全部为处理途中同步检查，正常用户零开销；0 = 关闭该防线
+# 上限自洽不变量：MAX_ROUTES_PER_GROUP × MAX_ROUTE_INFO_BYTES 须 < MAX_MESSAGE_BYTES
+# （不自洽时启动日志 warn，合法全量推送可能被出站硬闸丢弃）
+MAX_SYNC_ITEMS = "256"
+# 单条 RoutePeerInfo 原始字节上限，超出丢弃该条（防巨型条目状态膨胀；官方典型条目 ~100-300B）
+MAX_ROUTE_INFO_BYTES = "768"
+# 每分组路由条目总数上限（transit/幽灵条目总量闸门，兼作出站全量推送体积上界）
+MAX_ROUTES_PER_GROUP = "128"
+# PeerCenter 单上报者直连表条目上限，超出截断
+MAX_DIRECT_PEERS_REPORT = "64"
+# 全量重推最小间隔（毫秒）：会话重置 / GetGlobalPeerMap 全量响应共用，每连接
+FULL_RESYNC_COOLDOWN_MS = "1000"
+# 握手网络名长度上限（空名 / 超长名拒绝，close 4002）
+MAX_NETWORK_NAME_BYTES = "128"
+# 未知路径 tar pit（v1.4.1）：非升级请求访问未知路径时挂起不响应
+# （不返回 404，不泄露行为指纹，让扫描器空等）；EasyTier 客户端只走
+# WS 升级，不受影响；0 = 关闭（恢复 404）
+TARPIT_UNKNOWN = "1"
+# 可选：JSON 映射 {"网络名":"网络密钥"}，配置后服务端校验客户端摘要（SipHash-1-3）
+# NETWORK_SECRETS = "{\"myteam\":\"s3cret!\"}"
+# 可选：DO 房间分片。默认单一房间 "global"；配置后可按 Header/Query 切分房间
+# ROOM_ID = "global"
+# ROOM_HEADER = "X-Room"
+# ROOM_QUERY = "room"
 # ---------------------------------------------------------------------------
 # KV 审计（记录 + 黑名单）。需要先创建 KV namespace 并取消下方注释：
 #   npx wrangler kv namespace create AUDIT_KV
@@ -109,35 +113,30 @@ AUDIT_RETENTION_DAYS = "0"
 # 重连风暴时 KV 读从每次连接 1 次降为每 TTL 1 次。只延后拦截、绝不漏放
 # （缓存未命中照旧放行走 DO 权威检查）。0 = 关闭
 IP_BLOCK_CACHE_MS = "30000"
-# 可选：JSON 映射 {"网络名":"网络密钥"}，配置后服务端校验客户端摘要（SipHash-1-3）
-# NETWORK_SECRETS = "{\"default\":\"my-secret\"}"
-# 可选：DO 房间分片。默认单一房间 "global"；配置后可按 Header/Query 切分房间
-# ROOM_ID = "global"
-# ROOM_HEADER = "X-Room"
-# ROOM_QUERY = "room"
-
 # ---------------------------------------------------------------------------
 # 监控与管理端（生产环境默认全部禁用 —— 不配置即 404，零攻击面）
 # 启用时务必使用随机长路径 + 强 token（两道防线），参考部署手册「监控与管理端」章节
 # ---------------------------------------------------------------------------
+# 日志级别：debug | info | warn | error
+LOG_LEVEL = "info"
 # 统计端点：自定义安全路径（不配置则 /metrics 完全禁用）
 # METRICS_PATH = "/m-please-change-me"
 # 统计端点 token（与 METRICS_PATH 同时配置才启用；支持 Bearer 头或 ?token= 参数）
-# METRICS_TOKEN = "please-change-me-to-a-long-random-string"
+# METRICS_TOKEN = ""
 # 健康检查路径（默认 /health）。配置后仅该路径返回 {"ok":true}，原 /health 返回 404（防指纹扫描，无需 token）
-# HEALTH_PATH = "/health"
+HEALTH_PATH = "/healthcheck"
 # Web 管理端路径（需与 ADMIN_TOKEN 同时配置才启用；页面壳公开、数据 API 鉴权）
 # ADMIN_PATH = "/admin-please-change-me"
 # 管理端 token（状态查看 / 踢出节点 / 删除分组）
 # ⚠️ 安全建议：token 属敏感信息，生产环境建议用
 #   npx wrangler secret put ADMIN_TOKEN
 # 注入而非写在本文件明文（与 CF_API_TOKEN 同模式）；本文件可能随仓库/备份/截图外泄
-# ADMIN_TOKEN = "please-change-me-to-another-long-random-string"
+# ADMIN_TOKEN = ""
 # ---------------------------------------------------------------------------
 # 账号级真实额度 + AE 趋势（v1.6，全部可选 —— 不配置则管理页回退自观测估算）
 # ---------------------------------------------------------------------------
 # Cloudflare 账号 ID（Dashboard 右侧 / Workers 概览页可见，非敏感）
-# CF_ACCOUNT_ID = "your-cloudflare-account-id"
+CF_ACCOUNT_ID = "6b0d0002e86d2afa312b98ff391e1a61"
 # Cloudflare API Token：必须用 secret 注入，绝不写入本文件明文！
 #   npx wrangler secret put CF_API_TOKEN
 #   权限只给「Account Analytics: Read」（供 GraphQL 额度查询与 AE SQL 趋势查询共用），
@@ -150,6 +149,7 @@ IP_BLOCK_CACHE_MS = "30000"
 #（AE 绑定无法在运行时读取自身 dataset 名；wrangler 未写 dataset 时默认取 Worker 名）。
 # 默认 easytier-cf-relay 与发行配置的绑定一致；绑定改名的部署两处须一起改
 AE_DATASET = "easytier-cf-relay"
+
 [durable_objects]
 bindings = [
   { name = "RELAY_ROOM", class_name = "RelayRoom" }
@@ -160,17 +160,17 @@ bindings = [
 # [[kv_namespaces]]
 # binding = "AUDIT_KV"
 # id = "<你的 KV namespace id>"
+
 # Analytics Engine 绑定（v1.6：趋势打点，免费计划含 100,000 数据点/天；
 # 本方案每分钟 1 点 ≈ 1,440/天）。绑定即自动建数据集，无需额外创建步骤
 # ⚠️ 注意：本绑定要求账号先在 Dashboard 一次性开通 Analytics Engine
 #   （Workers & Pages → Analytics Engine → Enable，免费、无需绑卡）；
 #   未开通时 `wrangler deploy` 会报错 10089「You need to enable Analytics
-#   Engine」，整个部署失败（线上不受影响，开通后重跑即可）。不需要趋势图
-#   可注释掉下面 3 行——代码自动降级，其余功能不受影响。
+#   Engine」，整个部署失败（线上不受影响，开通后重跑即可）。
 # 打开 https://dash.cloudflare.com/{CF_ACCOUNT_ID}/workers/analytics-engine
-# [[analytics_engine_datasets]]
-# binding = "AE"
-# dataset = "easytier-cf-relay"
+[[analytics_engine_datasets]]
+binding = "AE"
+dataset = "easytier-cf-relay"
 
 [[migrations]]
 tag = "v1"
@@ -178,4 +178,5 @@ new_sqlite_classes = ["RelayRoom"]
 
 # 说明：
 # - 使用 new_sqlite_classes（存储后端为 SQLite，免费额度内即支持 Hibernation API）
-# - 若已有旧部署（new_classes），不要重复添加迁移，参考部署手册"迁移"章节
+# - 若已有旧部署（new_classes），不要重复添加迁移，参考部署手册「迁移」章节
+# - 生产敏感变量（METRICS_TOKEN / ADMIN_TOKEN / CF_API_TOKEN 等）建议用 npx wrangler secret put 注入
